@@ -133,8 +133,7 @@ async def handle_user_message(message: Message):
                     headers={
                         "Authorization": f"Bearer {OPENROUTER_API_KEY}", 
                         "Content-Type": "application/json",
-                        "HTTP-Referer": WEBHOOK_URL, # Добавляем рефереры для OpenRouter
-                        "X-Title": "Бот ИИ"
+                        "HTTP-Referer": WEBHOOK_URL # Рефереры для OpenRouter
                     },
                     json={
                         "model": "qwen/qwen3-235b-a22b:free", 
