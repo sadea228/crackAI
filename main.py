@@ -206,7 +206,7 @@ async def handle_user_message(message: Message):
                         "Content-Type": "application/json"
                     },
                     json={
-                        "model": "microsoft/phi-4-reasoning-plus:free",
+                        "model": "google/gemma-3-27b-it:free",
                         "messages": messages,
                         "temperature": 0.7,
                         "max_tokens": 800
@@ -260,12 +260,11 @@ async def handle_user_message(message: Message):
 
     # Сохраняем и отправляем форматированный ответ
     session.append(answer)
-    formatted_answer = f"💡 <b>Ответ ИИ:</b>\n{answer}"
+    formatted_answer = f"💡 Ответ ИИ:\n{answer}"
     logging.info(f"Отправляем ответ пользователю {user_id}")
     try:
         await message.answer(
             formatted_answer,
-            parse_mode='HTML',
             reply_markup=keyboard_main
         )
         logging.info(f"Ответ успешно отправлен пользователю {user_id}")
