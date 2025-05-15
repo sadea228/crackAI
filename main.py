@@ -6,14 +6,19 @@ import base64
 
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import Command
-from aiogram.types import Message, KeyboardButton, ReplyKeyboardMarkup
+from aiogram.types import Message, KeyboardButton, ReplyKeyboardMarkup, Update
 
-from config import BOT_TOKEN, OPENROUTER_API_KEY, VIP_CHANNEL_ID
+from config import BOT_TOKEN, OPENROUTER_API_KEY, VIP_CHANNEL_ID, WEBHOOK_URL, PORT
+from fastapi import FastAPI, Request
+import uvicorn
 
 logging.basicConfig(level=logging.INFO)
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
+
+# FastAPI для webhook
+app = FastAPI()
 
 # Контекст сессий
 # Хранение истории сообщений: dict[user_id, list[str]]
@@ -27,6 +32,24 @@ keyboard_main = ReplyKeyboardMarkup(
     ],
     resize_keyboard=True
 )
+
+@app.on_event("startup")
+async def on_startup():
+    # Устанавливаем вебхук
+    await bot.set_webhook(WEBHOOK_URL + "/webhook")
+
+@app.on_event("shutdown")
+async def on_shutdown():
+    # Удаляем вебхук при остановке
+    await bot.delete_webhook()
+
+@app.post("/webhook")
+async def webhook_handler(request: Request):
+    # Обработка входящего обновления от Telegram
+    data = await request.json()
+    update = Update.model_validate(data)
+    await dp.process_update(update)
+    return {"ok": True}
 
 @dp.message(Command("start"))
 async def cmd_start(message: Message):
@@ -140,8 +163,6 @@ async def cmd_contact(message: Message):
         reply_markup=keyboard_main
     )
 
-async def main():
-    await dp.start_polling(bot)
-
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    # Запуск FastAPI сервера для webhook
+    uvicorn.run("main:app", host="0.0.0.0", port=PORT) 
