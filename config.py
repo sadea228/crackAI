@@ -5,10 +5,14 @@ from dotenv import load_dotenv
 load_dotenv()
 
 BOT_TOKEN: str = os.getenv('BOT_TOKEN')
-OPENROUTER_API_KEY: str = os.getenv('OPENROUTER_API_KEY')
 VIP_CHANNEL_ID: str = os.getenv('VIP_CHANNEL_ID')
 WEBHOOK_URL: str = os.getenv('WEBHOOK_URL')
 PORT: int = int(os.getenv('PORT', '8000'))
 
-if not all([BOT_TOKEN, OPENROUTER_API_KEY, VIP_CHANNEL_ID, WEBHOOK_URL]):
-    raise RuntimeError('Отсутствуют обязательные переменные окружения: BOT_TOKEN, OPENROUTER_API_KEY, VIP_CHANNEL_ID, WEBHOOK_URL') 
+# Ключ для Google Gemini API (с дефолтным значением)
+GEMINI_API_KEY: str = os.getenv('GEMINI_API_KEY', 'AIzaSyA7iBgf46Fj0xfGgww2gPs6I1SmJla2UUE')
+if not GEMINI_API_KEY:
+    raise RuntimeError('Отсутствует обязательная переменная окружения: GEMINI_API_KEY')
+
+if not all([BOT_TOKEN, VIP_CHANNEL_ID, WEBHOOK_URL]):
+    raise RuntimeError('Отсутствуют обязательные переменные окружения: BOT_TOKEN, VIP_CHANNEL_ID, WEBHOOK_URL') 

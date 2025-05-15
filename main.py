@@ -13,7 +13,7 @@ from aiogram import Bot, Dispatcher, F
 from aiogram.filters import Command
 from aiogram.types import Message, KeyboardButton, ReplyKeyboardMarkup, Update, ErrorEvent
 
-from config import BOT_TOKEN, OPENROUTER_API_KEY, VIP_CHANNEL_ID, WEBHOOK_URL, PORT
+from config import BOT_TOKEN, VIP_CHANNEL_ID, WEBHOOK_URL, PORT, GEMINI_API_KEY
 from fastapi import FastAPI, Request, Response
 import uvicorn
 from contextlib import asynccontextmanager
@@ -182,78 +182,32 @@ async def handle_user_message(message: Message):
         {"role": "user", "content": context_str}
     ]
 
-    # Запрос к OpenRouter с повторными попытками
-    max_retries = 3
-    retry_delay = 2
-    
-    for attempt in range(max_retries):
-        try:
-            # Отправляем сообщение о начале обработки при первой попытке
-            if attempt == 0:
-                logging.info(f"Отправляем пользователю {user_id} сообщение о начале генерации")
-                await message.answer("⏳ Генерирую ответ...", reply_markup=keyboard_main)
-            
-            logging.info(f"Запрос к OpenRouter (попытка {attempt+1}/{max_retries})")
-            # Увеличиваем таймаут для стабильности
-            async with httpx.AsyncClient(timeout=120.0) as client:
-                resp = await client.post(
-                    "https://openrouter.ai/api/v1/chat/completions",
-                    headers={
-                        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-                        "Content-Type": "application/json"
-                    },
-                    json={
-                        "model": "google/gemma-3-27b-it:free",
-                        "messages": messages,
-                        "temperature": 0.7,
-                        "max_tokens": 800
-                    }
-                )
-                resp.raise_for_status()
-                data = resp.json()
-                
-                # Логируем ответ API для диагностики
-                logging.info(f"Ответ API OpenRouter: {data}")
-                
-                # Проверяем наличие необходимых полей в ответе
-                if "choices" not in data:
-                    logging.error(f"Неверный формат ответа API: {data}")
-                    if "error" in data:
-                        raise Exception(f"API вернул ошибку: {data['error']}")
-                    else:
-                        raise Exception("Неожиданный формат ответа API")
-                        
-                if not data["choices"] or len(data["choices"]) == 0:
-                    logging.error("API вернул пустой список choices")
-                    raise Exception("API вернул пустой ответ")
-                    
-                if "message" not in data["choices"][0]:
-                    logging.error(f"Отсутствует поле 'message' в choices: {data['choices'][0]}")
-                    raise Exception("Неверный формат ответа API")
-                    
-                if "content" not in data["choices"][0]["message"]:
-                    logging.error(f"Отсутствует поле 'content' в message: {data['choices'][0]['message']}")
-                    raise Exception("Неверный формат ответа API")
-                
-                answer = data["choices"][0]["message"]["content"]
-                logging.info(f"Получен ответ от OpenRouter для пользователя {user_id}")
-                # Успешный ответ, выходим из цикла
-                break
-                
-        except Exception as e:
-            logging.error(f"Ошибка при запросе к OpenRouter (попытка {attempt+1}/{max_retries}): {str(e)}")
-            if attempt == max_retries - 1:
-                # Последняя попытка не удалась
-                logging.error(f"Все попытки запроса к API не удались для пользователя {user_id}")
-                await message.answer(
-                    "Произошла ошибка при обращении к ИИ. Попробуйте позже.",
-                    reply_markup=keyboard_main
-                )
-                return
-            # Ждем перед следующей попыткой
-            await asyncio.sleep(retry_delay)
-            # Увеличиваем задержку для следующей попытки
-            retry_delay *= 2
+    # Запрос к Google Gemini API
+    try:
+        logging.info(f"Запрос к Google Gemini API для пользователя {user_id}")
+        payload = {"contents": [{"parts": [{"text": context_str}]}]}
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            resp = await client.post(url, json=payload)
+            resp.raise_for_status()
+            data = resp.json()
+        logging.info(f"Ответ Google Gemini API: {data}")
+        if "response" not in data or "candidates" not in data["response"]:
+            logging.error(f"Неверный формат ответа API Gemini: {data}")
+            await message.answer("Ошибка при обращении к Gemini API.", reply_markup=keyboard_main)
+            return
+        candidate = data["response"]["candidates"][0]
+        if "content" in candidate and "parts" in candidate["content"] and candidate["content"]["parts"]:
+            answer = candidate["content"]["parts"][0]["text"]
+        else:
+            logging.error(f"Неверный формат поля content в API Gemini: {candidate}")
+            await message.answer("Не удалось обработать ответ от Gemini API.", reply_markup=keyboard_main)
+            return
+        logging.info(f"Получен ответ от Gemini API для пользователя {user_id}")
+    except Exception as e:
+        logging.error(f"Ошибка при запросе к Gemini API: {e}")
+        await message.answer("Произошла ошибка при обращении к Gemini API.", reply_markup=keyboard_main)
+        return
 
     # Сохраняем и отправляем форматированный ответ
     session.append(answer)
