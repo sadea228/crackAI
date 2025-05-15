@@ -206,7 +206,7 @@ async def handle_user_message(message: Message):
                         "Content-Type": "application/json"
                     },
                     json={
-                        "model": "qwen/qwen3-235b-a22b:free",
+                        "model": "microsoft/phi-4-reasoning-plus:free",
                         "messages": messages,
                         "temperature": 0.7,
                         "max_tokens": 800
