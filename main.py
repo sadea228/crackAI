@@ -192,16 +192,22 @@ async def handle_user_message(message: Message):
             resp.raise_for_status()
             data = resp.json()
         logging.info(f"Ответ Google Gemini API: {data}")
-        if "response" not in data or "candidates" not in data["response"]:
-            logging.error(f"Неверный формат ответа API Gemini: {data}")
-            await message.answer("Ошибка при обращении к Gemini API.", reply_markup=keyboard_main)
-            return
-        candidate = data["response"]["candidates"][0]
-        if "content" in candidate and "parts" in candidate["content"] and candidate["content"]["parts"]:
-            answer = candidate["content"]["parts"][0]["text"]
-        else:
-            logging.error(f"Неверный формат поля content в API Gemini: {candidate}")
-            await message.answer("Не удалось обработать ответ от Gemini API.", reply_markup=keyboard_main)
+        try:
+            if "candidates" not in data or len(data["candidates"]) == 0:
+                logging.error(f"Неверный формат ответа API Gemini: {data}")
+                await message.answer("Ошибка: неверный формат ответа от Gemini API.", reply_markup=keyboard_main)
+                return
+            
+            candidate = data["candidates"][0]
+            if "content" in candidate and "parts" in candidate["content"] and len(candidate["content"]["parts"]) > 0:
+                answer = candidate["content"]["parts"][0]["text"]
+            else:
+                logging.error(f"Неверный формат поля content в API Gemini: {candidate}")
+                await message.answer("Не удалось обработать ответ от Gemini API.", reply_markup=keyboard_main)
+                return
+        except Exception as e:
+            logging.error(f"Ошибка при обработке ответа Gemini API: {e}")
+            await message.answer("Ошибка обработки ответа от Gemini API.", reply_markup=keyboard_main)
             return
         logging.info(f"Получен ответ от Gemini API для пользователя {user_id}")
     except Exception as e:
