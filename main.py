@@ -9,7 +9,7 @@ from aiogram.filters import Command
 from aiogram.types import Message, KeyboardButton, ReplyKeyboardMarkup, Update
 
 from config import BOT_TOKEN, OPENROUTER_API_KEY, VIP_CHANNEL_ID, WEBHOOK_URL, PORT
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Response
 import uvicorn
 
 logging.basicConfig(level=logging.INFO)
@@ -23,6 +23,10 @@ app = FastAPI()
 @app.get("/")
 async def root():
     return {"status": "ok"}
+
+@app.head("/")
+async def head_root():
+    return Response(status_code=200)
 
 # Контекст сессий
 # Хранение истории сообщений: dict[user_id, list[str]]
