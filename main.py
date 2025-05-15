@@ -215,6 +215,30 @@ async def handle_user_message(message: Message):
                 )
                 resp.raise_for_status()
                 data = resp.json()
+                
+                # Логируем ответ API для диагностики
+                logging.info(f"Ответ API OpenRouter: {data}")
+                
+                # Проверяем наличие необходимых полей в ответе
+                if "choices" not in data:
+                    logging.error(f"Неверный формат ответа API: {data}")
+                    if "error" in data:
+                        raise Exception(f"API вернул ошибку: {data['error']}")
+                    else:
+                        raise Exception("Неожиданный формат ответа API")
+                        
+                if not data["choices"] or len(data["choices"]) == 0:
+                    logging.error("API вернул пустой список choices")
+                    raise Exception("API вернул пустой ответ")
+                    
+                if "message" not in data["choices"][0]:
+                    logging.error(f"Отсутствует поле 'message' в choices: {data['choices'][0]}")
+                    raise Exception("Неверный формат ответа API")
+                    
+                if "content" not in data["choices"][0]["message"]:
+                    logging.error(f"Отсутствует поле 'content' в message: {data['choices'][0]['message']}")
+                    raise Exception("Неверный формат ответа API")
+                
                 answer = data["choices"][0]["message"]["content"]
                 logging.info(f"Получен ответ от OpenRouter для пользователя {user_id}")
                 # Успешный ответ, выходим из цикла
