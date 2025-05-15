@@ -202,12 +202,11 @@ async def handle_user_message(message: Message):
                 resp = await client.post(
                     "https://openrouter.ai/api/v1/chat/completions",
                     headers={
-                        "Authorization": f"Bearer {OPENROUTER_API_KEY}", 
-                        "Content-Type": "application/json",
-                        "HTTP-Referer": WEBHOOK_URL # Рефереры для OpenRouter
+                        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                        "Content-Type": "application/json"
                     },
                     json={
-                        "model": "qwen/qwen3-235b-a22b:free", 
+                        "model": "qwen/qwen3-235b-a22b:free",
                         "messages": messages,
                         "temperature": 0.7,
                         "max_tokens": 800
@@ -249,7 +248,10 @@ async def handle_user_message(message: Message):
             if attempt == max_retries - 1:
                 # Последняя попытка не удалась
                 logging.error(f"Все попытки запроса к API не удались для пользователя {user_id}")
-                await message.answer("Произошла ошибка при обращении к ИИ. Попробуйте позже.")
+                await message.answer(
+                    "Произошла ошибка при обращении к ИИ. Попробуйте позже.",
+                    reply_markup=keyboard_main
+                )
                 return
             # Ждем перед следующей попыткой
             await asyncio.sleep(retry_delay)
