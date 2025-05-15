@@ -11,14 +11,25 @@ from aiogram.types import Message, KeyboardButton, ReplyKeyboardMarkup, Update
 from config import BOT_TOKEN, OPENROUTER_API_KEY, VIP_CHANNEL_ID, WEBHOOK_URL, PORT
 from fastapi import FastAPI, Request, Response
 import uvicorn
+from contextlib import asynccontextmanager
 
 logging.basicConfig(level=logging.INFO)
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Код, выполняемый при запуске приложения
+    logging.info("Устанавливаем вебхук...")
+    await bot.set_webhook(WEBHOOK_URL + "/webhook")
+    yield
+    # Код, выполняемый при остановке приложения
+    logging.info("Удаляем вебхук...")
+    await bot.delete_webhook()
+
 # Создаём приложение FastAPI с health check endpoint
-app = FastAPI()
+app = FastAPI(lifespan=lifespan)
 
 @app.get("/")
 async def root():
@@ -40,16 +51,6 @@ keyboard_main = ReplyKeyboardMarkup(
     ],
     resize_keyboard=True
 )
-
-@app.on_event("startup")
-async def on_startup():
-    # Устанавливаем вебхук
-    await bot.set_webhook(WEBHOOK_URL + "/webhook")
-
-@app.on_event("shutdown")
-async def on_shutdown():
-    # Удаляем вебхук при остановке
-    await bot.delete_webhook()
 
 @app.post("/webhook")
 async def webhook_handler(request: Request):
@@ -115,20 +116,49 @@ async def handle_user_message(message: Message):
         {"role": "user", "content": context_str}
     ]
 
-    # Запрос к OpenRouter
-    try:
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            resp = await client.post(
-                "https://openrouter.ai/api/v1/chat/completions",
-                headers={"Authorization": f"Bearer {OPENROUTER_API_KEY}", "Content-Type": "application/json"},
-                json={"model": "qwen/qwen3-235b-a22b:free", "messages": messages}
-            )
-            resp.raise_for_status()
-            data = resp.json()
-            answer = data["choices"][0]["message"]["content"]
-    except Exception:
-        await message.answer("Произошла ошибка при обращении к ИИ. Попробуйте позже.")
-        return
+    # Запрос к OpenRouter с повторными попытками
+    max_retries = 3
+    retry_delay = 2
+    
+    for attempt in range(max_retries):
+        try:
+            # Отправляем сообщение о начале обработки при первой попытке
+            if attempt == 0:
+                await message.answer("⏳ Генерирую ответ...", reply_markup=keyboard_main)
+            
+            # Увеличиваем таймаут для стабильности
+            async with httpx.AsyncClient(timeout=120.0) as client:
+                resp = await client.post(
+                    "https://openrouter.ai/api/v1/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {OPENROUTER_API_KEY}", 
+                        "Content-Type": "application/json",
+                        "HTTP-Referer": WEBHOOK_URL, # Добавляем рефереры для OpenRouter
+                        "X-Title": "Бот ИИ"
+                    },
+                    json={
+                        "model": "qwen/qwen3-235b-a22b:free", 
+                        "messages": messages,
+                        "temperature": 0.7,
+                        "max_tokens": 800
+                    }
+                )
+                resp.raise_for_status()
+                data = resp.json()
+                answer = data["choices"][0]["message"]["content"]
+                # Успешный ответ, выходим из цикла
+                break
+                
+        except Exception as e:
+            logging.error(f"Ошибка при запросе к OpenRouter (попытка {attempt+1}/{max_retries}): {str(e)}")
+            if attempt == max_retries - 1:
+                # Последняя попытка не удалась
+                await message.answer("Произошла ошибка при обращении к ИИ. Попробуйте позже.")
+                return
+            # Ждем перед следующей попыткой
+            await asyncio.sleep(retry_delay)
+            # Увеличиваем задержку для следующей попытки
+            retry_delay *= 2
 
     # Сохраняем и отправляем форматированный ответ
     session.append(answer)
