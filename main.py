@@ -107,14 +107,11 @@ async def webhook_handler(request: Request):
     try:
         data = await request.json()
         update = Update.model_validate(data)
-        # Устанавливаем таймаут на обработку обновления
-        await asyncio.wait_for(dp.feed_update(bot, update), timeout=60.0)
+        # Обрабатываем входящее обновление без таймаута
+        await dp.feed_update(bot, update)
         # Обновляем время последнего успешного обновления
         last_successful_update = time.time()
         return {"ok": True}
-    except asyncio.TimeoutError:
-        logging.error("Таймаут при обработке вебхука")
-        return {"error": "timeout"}
     except Exception as e:
         logging.error(f"Ошибка в webhook_handler: {str(e)}")
         return {"error": str(e)}
