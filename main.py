@@ -17,8 +17,12 @@ logging.basicConfig(level=logging.INFO)
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
-# FastAPI для webhook
+# Создаём приложение FastAPI с health check endpoint
 app = FastAPI()
+
+@app.get("/")
+async def root():
+    return {"status": "ok"}
 
 # Контекст сессий
 # Хранение истории сообщений: dict[user_id, list[str]]
