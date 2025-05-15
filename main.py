@@ -48,7 +48,7 @@ async def webhook_handler(request: Request):
     # Обработка входящего обновления от Telegram
     data = await request.json()
     update = Update.model_validate(data)
-    await dp.process_update(update)
+    await dp.feed_update(bot, update)
     return {"ok": True}
 
 @dp.message(Command("start"))
