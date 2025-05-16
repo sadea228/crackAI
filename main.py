@@ -13,10 +13,7 @@ from aiogram import Bot, Dispatcher, F
 from aiogram.filters import Command
 from aiogram.types import Message, KeyboardButton, ReplyKeyboardMarkup, Update, ErrorEvent
 
-from config import BOT_TOKEN, VIP_CHANNEL_ID, WEBHOOK_URL, PORT, GEMINI_API_KEY
-from fastapi import FastAPI, Request, Response
-import uvicorn
-from contextlib import asynccontextmanager
+from config import BOT_TOKEN, VIP_CHANNEL_ID, GEMINI_API_KEY
 
 logging.basicConfig(level=logging.INFO)
 
@@ -44,54 +41,6 @@ last_successful_update = time.time()
 health_check_interval = 300  # 5 минут
 max_inactive_time = 600  # 10 минут без активности считаем проблемой
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Код, выполняемый при запуске приложения
-    logging.info("Устанавливаем вебхук...")
-    await bot.set_webhook(WEBHOOK_URL + "/webhook", drop_pending_updates=True)
-    logging.info("Webhook установлен с drop_pending_updates=True, старые обновления сброшены")
-    # Добавляю логирование информации о вебхуке
-    webhook_info = await bot.get_webhook_info()
-    logging.info(f"Webhook info: {webhook_info}")
-    
-    # Запуск задачи мониторинга (отключено)
-    # asyncio.create_task(health_check_task())
-    
-    yield
-    # Код, выполняемый при остановке приложения
-    logging.info("Удаляем вебхук...")
-    await bot.delete_webhook()
-    # Закрываем aiohttp-сеанс бота, чтобы избежать предупреждений об unclosed client session
-    await bot.session.close()
-
-# Функция для мониторинга состояния бота
-async def health_check_task():
-    global last_successful_update
-    while True:
-        try:
-            await asyncio.sleep(health_check_interval)
-            current_time = time.time()
-            inactive_time = current_time - last_successful_update
-            
-            logging.info(f"Проверка состояния: последнее обновление {inactive_time:.1f} секунд назад")
-            
-            if inactive_time > max_inactive_time:
-                logging.warning(f"Бот не отвечает в течение {inactive_time:.1f} секунд, но перезапуск отключён")
-                # os.kill(os.getpid(), signal.SIGTERM)
-        except Exception as e:
-            logging.error(f"Ошибка в проверке состояния: {str(e)}")
-
-# Создаём приложение FastAPI с health check endpoint
-app = FastAPI(lifespan=lifespan)
-
-@app.get("/")
-async def root():
-    return {"status": "ok"}
-
-@app.head("/")
-async def head_root():
-    return Response(status_code=200)
-
 # Контекст сессий
 # Хранение истории сообщений: dict[user_id, list[str]]
 user_sessions: dict[int, list[str]] = {}
@@ -105,23 +54,6 @@ keyboard_main = ReplyKeyboardMarkup(
     resize_keyboard=True,
     one_time_keyboard=False
 )
-
-@app.post("/webhook")
-async def webhook_handler(request: Request):
-    global last_successful_update
-    # Обработка входящего обновления от Telegram
-    try:
-        data = await request.json()
-        logging.info(f"Получено обновление от Telegram: {data}")
-        update = Update.model_validate(data, context={"bot": bot})
-        # Обрабатываем входящее обновление без таймаута
-        await dp.feed_update(bot, update)
-        # Обновляем время последнего успешного обновления
-        last_successful_update = time.time()
-        return {"ok": True}
-    except Exception as e:
-        logging.error(f"Ошибка в webhook_handler: {str(e)}")
-        return {"error": str(e)}
 
 @dp.message(Command("start"))
 async def cmd_start(message: Message):
