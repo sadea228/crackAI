@@ -49,6 +49,9 @@ async def lifespan(app: FastAPI):
     # Код, выполняемый при запуске приложения
     logging.info("Устанавливаем вебхук...")
     await bot.set_webhook(WEBHOOK_URL + "/webhook")
+    # Добавляю логирование информации о вебхуке
+    webhook_info = await bot.get_webhook_info()
+    logging.info(f"Webhook info: {webhook_info}")
     
     # Запуск задачи мониторинга
     asyncio.create_task(health_check_task())
@@ -109,6 +112,7 @@ async def webhook_handler(request: Request):
     # Обработка входящего обновления от Telegram
     try:
         data = await request.json()
+        logging.info(f"Получено обновление от Telegram: {data}")
         update = Update.model_validate(data, context={"bot": bot})
         # Обрабатываем входящее обновление без таймаута
         await dp.feed_update(bot, update)
