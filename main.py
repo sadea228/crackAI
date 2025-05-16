@@ -308,5 +308,6 @@ async def cmd_contact(message: Message):
         logging.error(f"Ошибка при отправке контакта автора пользователю {user_id}: {str(e)}")
 
 if __name__ == "__main__":
-    # Запуск FastAPI сервера для webhook
-    uvicorn.run("main:app", host="0.0.0.0", port=PORT) 
+    # Запуск бота в режиме long-polling (без webhook)
+    logging.info("Запуск бота в режиме long-polling")
+    asyncio.run(dp.start_polling(bot, skip_updates=True)) 
