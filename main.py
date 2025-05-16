@@ -54,8 +54,8 @@ async def lifespan(app: FastAPI):
     webhook_info = await bot.get_webhook_info()
     logging.info(f"Webhook info: {webhook_info}")
     
-    # Запуск задачи мониторинга
-    asyncio.create_task(health_check_task())
+    # Запуск задачи мониторинга (отключено)
+    # asyncio.create_task(health_check_task())
     
     yield
     # Код, выполняемый при остановке приложения
@@ -76,9 +76,8 @@ async def health_check_task():
             logging.info(f"Проверка состояния: последнее обновление {inactive_time:.1f} секунд назад")
             
             if inactive_time > max_inactive_time:
-                logging.warning(f"Бот не отвечает в течение {inactive_time:.1f} секунд. Выполняем перезапуск...")
-                # Отправляем сигнал SIGTERM для перезапуска (Render перезапустит сервис)
-                os.kill(os.getpid(), signal.SIGTERM)
+                logging.warning(f"Бот не отвечает в течение {inactive_time:.1f} секунд, но перезапуск отключён")
+                # os.kill(os.getpid(), signal.SIGTERM)
         except Exception as e:
             logging.error(f"Ошибка в проверке состояния: {str(e)}")
 
