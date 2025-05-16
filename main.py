@@ -48,7 +48,8 @@ max_inactive_time = 600  # 10 минут без активности счита�
 async def lifespan(app: FastAPI):
     # Код, выполняемый при запуске приложения
     logging.info("Устанавливаем вебхук...")
-    await bot.set_webhook(WEBHOOK_URL + "/webhook")
+    await bot.set_webhook(WEBHOOK_URL + "/webhook", drop_pending_updates=True)
+    logging.info("Webhook установлен с drop_pending_updates=True, старые обновления сброшены")
     # Добавляю логирование информации о вебхуке
     webhook_info = await bot.get_webhook_info()
     logging.info(f"Webhook info: {webhook_info}")
