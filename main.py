@@ -20,7 +20,7 @@ from contextlib import asynccontextmanager
 
 logging.basicConfig(level=logging.INFO)
 
-bot = Bot(token=BOT_TOKEN)
+bot = Bot(token=BOT_TOKEN, parse_mode="HTML")
 dp = Dispatcher()
 
 # Добавляем глобальный обработчик исключений
@@ -96,10 +96,11 @@ user_sessions: dict[int, list[str]] = {}
 # Клавиатура
 keyboard_main = ReplyKeyboardMarkup(
     keyboard=[
-        [KeyboardButton(text="Новая сессия"), KeyboardButton(text="Помощь")],
-        [KeyboardButton(text="О боте"), KeyboardButton(text="Связаться с автором")],
+        [KeyboardButton(text="🆕 Новая сессия"), KeyboardButton(text="🆘 Помощь")],
+        [KeyboardButton(text="🤖 О боте"), KeyboardButton(text="📞 Связаться с автором")],
     ],
-    resize_keyboard=True
+    resize_keyboard=True,
+    one_time_keyboard=False
 )
 
 @app.post("/webhook")
@@ -128,7 +129,8 @@ async def cmd_start(message: Message):
         if member.status in ["creator", "administrator", "member"]:
             logging.info(f"Пользователь {user_id} имеет доступ")
             await message.answer(
-                "Привет! Я бот для общения с ИИ. Отправь сообщение, чтобы начать.",
+                "<b>Привет!</b> Я бот для общения с ИИ через <i>Google Gemini API</i>. Отвечаю по-русски и кратко.\n\n"
+                "Чтобы начать, отправьте любое сообщение.",
                 reply_markup=keyboard_main
             )
         else:
@@ -219,7 +221,7 @@ async def handle_user_message(message: Message):
 
     # Сохраняем и отправляем форматированный ответ
     session.append(answer)
-    formatted_answer = f"💡 Ответ ИИ:\n{answer}"
+    formatted_answer = f"💡 <b>Ответ ИИ:</b>\n{answer}"
     logging.info(f"Отправляем ответ пользователю {user_id}")
     try:
         await message.answer(
@@ -232,7 +234,7 @@ async def handle_user_message(message: Message):
         # Пробуем отправить без форматирования, если возникла ошибка
         try:
             await message.answer(
-                f"Ответ ИИ:\n{answer}",
+                f"💡 <b>Ответ ИИ:</b>\n{answer}",
                 reply_markup=keyboard_main
             )
         except Exception as e2:
@@ -260,7 +262,8 @@ async def cmd_about_bot(message: Message):
     logging.info(f"Пользователь {user_id} запросил информацию о боте")
     try:
         await message.answer(
-            "Я бот для общения с ИИ через OpenRouter. Отвечаю по-русски и кратко.",
+            "<b>🤖 О боте</b>\n"
+            "Этот бот позволяет общаться с ИИ на базе <i>Google Gemini API</i>. Отвечаю по-русски и кратко.",
             reply_markup=keyboard_main
         )
     except Exception as e:
@@ -273,7 +276,11 @@ async def cmd_help(message: Message):
     logging.info(f"Пользователь {user_id} запросил помощь")
     try:
         await message.answer(
-            "Чтобы начать работу, просто отправьте любое сообщение или фото. Кнопка 'Новая сессия' сбрасывает диалог, 'О боте' — информация о боте, 'Связаться с автором' — контакт автора.",
+            "<b>🆘 Помощь</b>\n"
+            "1. Отправьте сообщение или фото, чтобы получить ответ ИИ.\n"
+            "2. 🆕 Новая сессия — сброс контекста диалога.\n"
+            "3. 🤖 О боте — информация о возможностях.\n"
+            "4. 📞 Связаться с автором — контакт разработчика.",
             reply_markup=keyboard_main
         )
     except Exception as e:
@@ -285,7 +292,8 @@ async def cmd_contact(message: Message):
     logging.info(f"Пользователь {user_id} запросил контакт автора")
     try:
         await message.answer(
-            "Если у вас есть вопросы или предложения, напишите @sadea12.",
+            "<b>📞 Связаться с автором</b>\n"
+            "Напишите автору: <a href=\"https://t.me/sadea12\">@sadea12</a>",
             reply_markup=keyboard_main
         )
     except Exception as e:
