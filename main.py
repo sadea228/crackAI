@@ -146,7 +146,7 @@ async def cmd_start(message: Message):
             "Получи ссылку у @sadea12 и вступи в VIP-канал для активации."
         )
 
-@dp.message((F.text & ~F.text.in_(['Новая сессия', 'О боте', 'О нас', 'Помощь', 'Связаться с автором'])) | F.photo)
+@dp.message((F.text & ~F.text.in_(['🆕 Новая сессия', '🆘 Помощь', '🤖 О боте', '📞 Связаться с автором'])) | F.photo)
 async def handle_user_message(message: Message):
     user_id = message.from_user.id
     logging.info(f"Получено сообщение от пользователя {user_id}")
@@ -245,7 +245,7 @@ async def handle_user_message(message: Message):
             logging.error(f"Повторная ошибка при отправке ответа: {str(e2)}")
 
 # Обработчики специальных кнопок
-@dp.message(F.text == "Новая сессия")
+@dp.message(F.text == "🆕 Новая сессия")
 async def cmd_new_session(message: Message):
     user_id = message.from_user.id
     logging.info(f"Пользователь {user_id} запросил новую сессию")
@@ -260,7 +260,7 @@ async def cmd_new_session(message: Message):
     except Exception as e:
         logging.error(f"Ошибка при сбросе сессии для пользователя {user_id}: {str(e)}")
 
-@dp.message(F.text.in_(['О боте', 'О нас']))
+@dp.message(F.text == "🤖 О боте")
 async def cmd_about_bot(message: Message):
     user_id = message.from_user.id
     logging.info(f"Пользователь {user_id} запросил информацию о боте")
@@ -274,7 +274,7 @@ async def cmd_about_bot(message: Message):
         logging.error(f"Ошибка при отправке информации о боте пользователю {user_id}: {str(e)}")
 
 # Обработчики кнопок 'Помощь' и 'Связаться с автором'
-@dp.message(F.text == "Помощь")
+@dp.message(F.text == "🆘 Помощь")
 async def cmd_help(message: Message):
     user_id = message.from_user.id
     logging.info(f"Пользователь {user_id} запросил помощь")
@@ -290,7 +290,7 @@ async def cmd_help(message: Message):
     except Exception as e:
         logging.error(f"Ошибка при отправке справки пользователю {user_id}: {str(e)}")
 
-@dp.message(F.text == "Связаться с автором")
+@dp.message(F.text == "📞 Связаться с автором")
 async def cmd_contact(message: Message):
     user_id = message.from_user.id
     logging.info(f"Пользователь {user_id} запросил контакт автора")
