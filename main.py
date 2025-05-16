@@ -57,6 +57,8 @@ async def lifespan(app: FastAPI):
     # Код, выполняемый при остановке приложения
     logging.info("Удаляем вебхук...")
     await bot.delete_webhook()
+    # Закрываем aiohttp-сеанс бота, чтобы избежать предупреждений об unclosed client session
+    await bot.session.close()
 
 # Функция для мониторинга состояния бота
 async def health_check_task():
