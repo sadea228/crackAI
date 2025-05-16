@@ -248,6 +248,7 @@ async def handle_user_message(message: Message):
 @dp.message(F.text == "🆕 Новая сессия")
 async def cmd_new_session(message: Message):
     user_id = message.from_user.id
+    logging.info(f"cmd_new_session triggered by user {user_id}")
     logging.info(f"Пользователь {user_id} запросил новую сессию")
     # Сброс контекста пользователя
     user_sessions[user_id] = []
@@ -263,6 +264,7 @@ async def cmd_new_session(message: Message):
 @dp.message(F.text == "🤖 О боте")
 async def cmd_about_bot(message: Message):
     user_id = message.from_user.id
+    logging.info(f"cmd_about_bot triggered by user {user_id}")
     logging.info(f"Пользователь {user_id} запросил информацию о боте")
     try:
         await message.answer(
@@ -277,6 +279,7 @@ async def cmd_about_bot(message: Message):
 @dp.message(F.text == "🆘 Помощь")
 async def cmd_help(message: Message):
     user_id = message.from_user.id
+    logging.info(f"cmd_help triggered by user {user_id}")
     logging.info(f"Пользователь {user_id} запросил помощь")
     try:
         await message.answer(
@@ -293,6 +296,7 @@ async def cmd_help(message: Message):
 @dp.message(F.text == "📞 Связаться с автором")
 async def cmd_contact(message: Message):
     user_id = message.from_user.id
+    logging.info(f"cmd_contact triggered by user {user_id}")
     logging.info(f"Пользователь {user_id} запросил контакт автора")
     try:
         await message.answer(
