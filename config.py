@@ -7,7 +7,7 @@ load_dotenv()
 BOT_TOKEN: str = os.getenv('BOT_TOKEN')
 VIP_CHANNEL_ID: str = os.getenv('VIP_CHANNEL_ID')
 WEBHOOK_URL: str = os.getenv('WEBHOOK_URL')
-PORT: int = int(os.getenv('PORT', '8000'))
+PORT: int = int(os.getenv('PORT', '10000'))
 
 # Ключ для Google Gemini API (с дефолтным значением)
 GEMINI_API_KEY: str = os.getenv('GEMINI_API_KEY', 'AIzaSyA7iBgf46Fj0xfGgww2gPs6I1SmJla2UUE')
