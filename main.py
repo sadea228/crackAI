@@ -116,7 +116,7 @@ async def webhook_handler(request: Request):
         logging.info(f"Получено обновление от Telegram: {data}")
         update = Update.model_validate(data, context={"bot": bot})
         # Обрабатываем входящее обновление без таймаута
-        await dp.feed_update(update)
+        await dp.feed_update(bot, update)
         # Обновляем время последнего успешного обновления
         last_successful_update = time.time()
         return {"ok": True}
