@@ -8,6 +8,7 @@ import time
 import signal
 import os
 from datetime import datetime
+import tempfile
 
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import Command
@@ -159,14 +160,14 @@ async def handle_user_message(message: Message):
     session.append(answer)
     formatted_answer = f"💡 <b>Ответ ИИ:</b>\n{answer}"
     logging.info(f"Отправляем ответ пользователю {user_id}")
-    # Отправляем ответ: если слишком длинный, отправляем в файле .md
+    # Отправляем ответ: если слишком длинный, записываем в .md и отправляем файл
     if len(formatted_answer) > 4000:
-        buffer = io.BytesIO()
-        buffer.write(answer.encode('utf-8'))
-        buffer.seek(0)
-        filename = f"response_{user_id}_{int(time.time())}.md"
+        # Создаём временный файл
+        with tempfile.NamedTemporaryFile("w+", suffix=".md", delete=False, encoding="utf-8") as tmp:
+            tmp.write(answer)
+            tmp_path = tmp.name
         try:
-            input_file = InputFile(buffer, filename)
+            input_file = InputFile(tmp_path)
             await bot.send_document(
                 chat_id=message.chat.id,
                 document=input_file,
@@ -177,6 +178,11 @@ async def handle_user_message(message: Message):
         except Exception as e:
             logging.error(f"Ошибка при отправке документа пользователю {user_id}: {e}")
             await message.answer(answer, reply_markup=keyboard_main)
+        finally:
+            try:
+                os.remove(tmp_path)
+            except Exception:
+                pass
     else:
         try:
             await message.answer(
