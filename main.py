@@ -255,7 +255,11 @@ async def cmd_contact(message: Message):
     except Exception as e:
         logging.error(f"Ошибка при отправке контакта автора пользователю {user_id}: {str(e)}")
 
-if __name__ == "__main__":
-    # Запуск бота в режиме long-polling (без webhook)
+async def main():
+    # Удаляем webhook и сбрасываем pending updates, чтобы избежать конфликтов
+    await bot.delete_webhook(drop_pending_updates=True)
     logging.info("Запуск бота в режиме long-polling")
-    asyncio.run(dp.start_polling(bot, skip_updates=True)) 
+    await dp.start_polling(bot, skip_updates=True)
+
+if __name__ == "__main__":
+    asyncio.run(main()) 
