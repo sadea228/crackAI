@@ -12,8 +12,9 @@ import tempfile
 
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import Command
-from aiogram.types import Message, KeyboardButton, ReplyKeyboardMarkup, Update, ErrorEvent, InputFile
+from aiogram.types import Message, KeyboardButton, ReplyKeyboardMarkup, Update, ErrorEvent, InputFile, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from aiogram.types import FSInputFile
+from aiogram.enums import ChatAction
 
 from config import BOT_TOKEN, VIP_CHANNEL_ID, GEMINI_API_KEY
 
@@ -84,6 +85,8 @@ async def cmd_start(message: Message):
 async def handle_user_message(message: Message):
     user_id = message.from_user.id
     logging.info(f"Получено сообщение от пользователя {user_id}")
+    # Показываем индикатор набора текста
+    await bot.send_chat_action(chat_id=message.chat.id, action=ChatAction.TYPING)
     
     # Проверка подписки
     try:
@@ -168,12 +171,18 @@ async def handle_user_message(message: Message):
             tmp.write(answer)
             tmp_path = tmp.name
         try:
-            # Отправляем документ по пути, aiogram сам обернёт его в InputFile
+            # Показываем индикатор загрузки документа
+            await bot.send_chat_action(chat_id=message.chat.id, action=ChatAction.UPLOAD_DOCUMENT)
+            # Формируем inline-кнопки под документом
+            kb_answer = InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="🆕 Новая сессия", callback_data="new_session")],
+                [InlineKeyboardButton(text="🔄 Переформулировать", callback_data="rephrase")]
+            ])
             await bot.send_document(
                 chat_id=message.chat.id,
                 document=FSInputFile(tmp_path, filename=os.path.basename(tmp_path)),
                 caption="Ответ слишком длинный, отправляю в файле .md",
-                reply_markup=keyboard_main
+                reply_markup=kb_answer
             )
             logging.info(f"Документ с ответом отправлен пользователю {user_id}")
         except Exception as e:
@@ -186,9 +195,14 @@ async def handle_user_message(message: Message):
                 pass
     else:
         try:
+            # Формируем inline-кнопки для быстрого взаимодействия
+            kb_answer = InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="🆕 Новая сессия", callback_data="new_session")],
+                [InlineKeyboardButton(text="🔄 Переформулировать", callback_data="rephrase")]
+            ])
             await message.answer(
                 formatted_answer,
-                reply_markup=keyboard_main
+                reply_markup=kb_answer
             )
             logging.info(f"Ответ успешно отправлен пользователю {user_id}")
         except Exception as e:
@@ -261,6 +275,58 @@ async def cmd_contact(message: Message):
         )
     except Exception as e:
         logging.error(f"Ошибка при отправке контакта автора пользователю {user_id}: {str(e)}")
+
+@dp.callback_query(F.data == "new_session")
+async def cb_new_session(callback: CallbackQuery):
+    # Сброс контекста по кнопке
+    user_id = callback.from_user.id
+    user_sessions[user_id] = []
+    await callback.answer("Новая сессия начата")
+    await callback.message.answer(
+        "Новая сессия начата. Отправьте сообщение, чтобы начать диалог.",
+        reply_markup=keyboard_main
+    )
+
+@dp.callback_query(F.data == "rephrase")
+async def cb_rephrase(callback: CallbackQuery):
+    # Переформулирование последнего ответа
+    user_id = callback.from_user.id
+    session = user_sessions.get(user_id, [])
+    if not session or len(session) < 2:
+        await callback.answer("Нет текста для переформулирования", show_alert=True)
+        return
+    last_answer = session[-1]
+    await callback.answer()
+    # Показываем индикатор набора текста
+    await bot.send_chat_action(chat_id=callback.message.chat.id, action=ChatAction.TYPING)
+    # Запрос к Gemini для переформулирования
+    payload = {"contents": [{"parts": [{"text": f"Переформулируй текст: {last_answer}"}]}]}
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
+    try:
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            resp = await client.post(url, json=payload)
+            resp.raise_for_status()
+            data = resp.json()
+        if data.get("candidates"):
+            candidate = data["candidates"][0]
+            parts = candidate.get("content", {}).get("parts", [])
+            new_text = parts[0]["text"] if parts else None
+        else:
+            new_text = None
+    except Exception as e:
+        logging.error(f"Ошибка при переформулировании: {e}")
+        new_text = None
+    if not new_text:
+        await callback.message.answer("Не удалось переформулировать текст.", reply_markup=keyboard_main)
+        return
+    # Обновляем историю
+    session.append(new_text)
+    formatted = f"💡 <b>Переформулированный ответ:</b>\n{new_text}"
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🆕 Новая сессия", callback_data="new_session")],
+        [InlineKeyboardButton(text="🔄 Переформулировать", callback_data="rephrase")]
+    ])
+    await callback.message.answer(formatted, reply_markup=kb)
 
 async def main():
     # Удаляем webhook и сбрасываем pending updates, чтобы избежать конфликтов
