@@ -13,6 +13,7 @@ import tempfile
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import Command
 from aiogram.types import Message, KeyboardButton, ReplyKeyboardMarkup, Update, ErrorEvent, InputFile
+from aiogram.types import FSInputFile
 
 from config import BOT_TOKEN, VIP_CHANNEL_ID, GEMINI_API_KEY
 
@@ -167,10 +168,10 @@ async def handle_user_message(message: Message):
             tmp.write(answer)
             tmp_path = tmp.name
         try:
-            input_file = InputFile(tmp_path)
+            # Отправляем документ по пути, aiogram сам обернёт его в InputFile
             await bot.send_document(
                 chat_id=message.chat.id,
-                document=input_file,
+                document=FSInputFile(tmp_path, filename=os.path.basename(tmp_path)),
                 caption="Ответ слишком длинный, отправляю в файле .md",
                 reply_markup=keyboard_main
             )
