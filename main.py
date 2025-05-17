@@ -300,7 +300,11 @@ async def cb_rephrase(callback: CallbackQuery):
     # Показываем индикатор набора текста
     await bot.send_chat_action(chat_id=callback.message.chat.id, action=ChatAction.TYPING)
     # Запрос к Gemini для переформулирования
-    payload = {"contents": [{"parts": [{"text": f"Переформулируй текст: {last_answer}"}]}]}
+    instruction = (
+        f"Пожалуйста, переформулируй следующий текст на русском языке, "
+        f"сохрани его смысл, улучшив ясность, выразительность и стиль:\n\n{last_answer}"
+    )
+    payload = {"contents": [{"parts": [{"text": instruction}]}]}
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
     try:
         async with httpx.AsyncClient(timeout=120.0) as client:
