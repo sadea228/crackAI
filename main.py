@@ -11,7 +11,7 @@ from datetime import datetime
 
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import Command
-from aiogram.types import Message, KeyboardButton, ReplyKeyboardMarkup, Update, ErrorEvent
+from aiogram.types import Message, KeyboardButton, ReplyKeyboardMarkup, Update, ErrorEvent, InputFile
 
 from config import BOT_TOKEN, VIP_CHANNEL_ID, GEMINI_API_KEY
 
@@ -159,22 +159,38 @@ async def handle_user_message(message: Message):
     session.append(answer)
     formatted_answer = f"💡 <b>Ответ ИИ:</b>\n{answer}"
     logging.info(f"Отправляем ответ пользователю {user_id}")
-    try:
-        await message.answer(
-            formatted_answer,
-            reply_markup=keyboard_main
-        )
-        logging.info(f"Ответ успешно отправлен пользователю {user_id}")
-    except Exception as e:
-        logging.error(f"Ошибка при отправке ответа пользователю {user_id}: {str(e)}")
-        # Пробуем отправить без форматирования, если возникла ошибка
+    # Отправляем ответ: если слишком длинный, отправляем в файле .md
+    if len(formatted_answer) > 4000:
+        buffer = io.BytesIO()
+        buffer.write(answer.encode('utf-8'))
+        buffer.seek(0)
+        filename = f"response_{user_id}_{int(time.time())}.md"
         try:
-            await message.answer(
-                f"💡 <b>Ответ ИИ:</b>\n{answer}",
+            input_file = InputFile(buffer, filename)
+            await bot.send_document(
+                chat_id=message.chat.id,
+                document=input_file,
+                caption="Ответ слишком длинный, отправляю в файле .md",
                 reply_markup=keyboard_main
             )
-        except Exception as e2:
-            logging.error(f"Повторная ошибка при отправке ответа: {str(e2)}")
+            logging.info(f"Документ с ответом отправлен пользователю {user_id}")
+        except Exception as e:
+            logging.error(f"Ошибка при отправке документа пользователю {user_id}: {e}")
+            await message.answer(answer, reply_markup=keyboard_main)
+    else:
+        try:
+            await message.answer(
+                formatted_answer,
+                reply_markup=keyboard_main
+            )
+            logging.info(f"Ответ успешно отправлен пользователю {user_id}")
+        except Exception as e:
+            logging.error(f"Ошибка при отправке ответа пользователю {user_id}: {e}")
+            # Пробуем отправить без форматирования
+            try:
+                await message.answer(answer, reply_markup=keyboard_main)
+            except Exception as e2:
+                logging.error(f"Повторная ошибка при отправке ответа: {e2}")
 
 # Обработчики специальных кнопок
 @dp.message(F.text == "🆕 Новая сессия")
